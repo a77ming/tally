@@ -32,7 +32,7 @@ enum ClaudeQuotaFetcher {
     // MARK: - Credentials
 
     private static func accessToken() -> String? {
-        let json = keychainCredentials() ?? fileCredentials()
+        let json = fileCredentials() ?? securityToolCredentials() ?? keychainCredentials()
         guard let json,
               let creds = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
               let oauth = creds["claudeAiOauth"] as? [String: Any],
@@ -54,6 +54,28 @@ enum ClaudeQuotaFetcher {
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess else { return nil }
         return item as? Data
+    }
+
+    /// Reads the credentials via /usr/bin/security. A GUI app double-clicked
+    /// from Finder can't read another app's Keychain item directly (its ad-hoc
+    /// identity isn't on the item's ACL, and a background-thread request is
+    /// silently denied). The `security` tool is already trusted for this item,
+    /// so shelling out to it succeeds without a password prompt.
+    private static func securityToolCredentials() -> Data? {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        task.arguments = ["find-generic-password", "-s", "Claude Code-credentials", "-w"]
+        let out = Pipe()
+        task.standardOutput = out
+        task.standardError = Pipe()
+        do { try task.run() } catch { return nil }
+        let data = out.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+        guard task.terminationStatus == 0,
+              let json = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !json.isEmpty else { return nil }
+        return json.data(using: .utf8)
     }
 
     private static func fileCredentials() -> Data? {
