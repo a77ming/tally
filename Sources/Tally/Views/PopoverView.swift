@@ -23,7 +23,11 @@ struct PopoverView: View {
             chart
             Divider()
             tabPicker
+            // Constant height keeps the MenuBarExtra window size static —
+            // dynamic content height leaves a stale gap when the window
+            // doesn't shrink back after a resize.
             breakdownList
+                .frame(height: 190, alignment: .top)
             footer
         }
         .padding(.horizontal, 16)
@@ -189,9 +193,6 @@ struct PopoverView: View {
                 }
                 .padding(.vertical, 2)
             }
-            // ScrollView has no intrinsic height inside a MenuBarExtra
-            // window, so size it explicitly from the row count.
-            .frame(height: min(190, CGFloat(rows.count) * 40 + (tab == .providers ? 22 : 4)))
         }
     }
 
