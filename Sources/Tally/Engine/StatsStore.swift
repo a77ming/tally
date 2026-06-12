@@ -91,6 +91,11 @@ final class StatsStore: ObservableObject {
         return t
     }
 
+    /// Distinct days with any recorded usage, for the all-time daily average.
+    func activeDayCount() -> Int {
+        Set(snapshot.buckets.keys.map(\.day)).count
+    }
+
     /// Yesterday's totals, for the "vs yesterday" delta on the Today view.
     func yesterdayCost() -> Double {
         let day = UsageIndexer.dayFormatter.string(

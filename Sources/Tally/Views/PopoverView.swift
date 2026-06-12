@@ -78,22 +78,31 @@ struct PopoverView: View {
             Text("\(Formatters.tokens(totals.totalTokens)) tokens · \(totals.requests) requests · \(totals.sessions) sessions")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if store.period == .today, let delta = deltaText(today: totals.cost) {
-                Text(delta.text)
-                    .font(.caption)
-                    .foregroundStyle(delta.color)
-            }
+            // Always exactly one line here — hiding it changes the content
+            // height and the MenuBarExtra window leaves a stale gap.
+            let insight = insightText(totals: totals)
+            Text(insight.text)
+                .font(.caption)
+                .foregroundStyle(insight.color)
         }
     }
 
-    private func deltaText(today: Double) -> (text: String, color: Color)? {
-        let yesterday = store.yesterdayCost()
-        guard yesterday > 0 else { return nil }
-        let pct = Int((abs(today - yesterday) / yesterday * 100).rounded())
-        if today >= yesterday {
-            return ("▲ \(pct)% vs yesterday", .red)
-        } else {
-            return ("▼ \(pct)% vs yesterday", .green)
+    private func insightText(totals: Totals) -> (text: String, color: Color) {
+        switch store.period {
+        case .today:
+            let yesterday = store.yesterdayCost()
+            guard yesterday > 0 else { return ("—", .secondary) }
+            let pct = Int((abs(totals.cost - yesterday) / yesterday * 100).rounded())
+            return totals.cost >= yesterday
+                ? ("▲ \(pct)% vs yesterday", .red)
+                : ("▼ \(pct)% vs yesterday", .green)
+        case .week:
+            return ("\(Formatters.cost(totals.cost / 7))/day average", .secondary)
+        case .month:
+            return ("\(Formatters.cost(totals.cost / 30))/day average", .secondary)
+        case .all:
+            let days = max(1, store.activeDayCount())
+            return ("\(Formatters.cost(totals.cost / Double(days)))/day over \(days) active days", .secondary)
         }
     }
 
