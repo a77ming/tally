@@ -8,22 +8,30 @@ struct PlanInfo: Sendable, Equatable {
 }
 
 enum PlanCatalog {
-    /// Claude subscription, from the Keychain OAuth credentials
-    /// (`subscriptionType` + `rateLimitTier`).
-    static func claude(subscriptionType: String?, rateLimitTier: String?) -> PlanInfo? {
-        guard let sub = subscriptionType?.lowercased(), !sub.isEmpty else { return nil }
+    /// Claude subscription, from ~/.claude.json's oauthAccount. The rate-limit
+    /// tier (`default_claude_max_20x` etc.) distinguishes Max 5×/20×; the
+    /// Keychain credentials' `subscriptionType` flattens everything to "pro",
+    /// so we never use that.
+    static func claude(rateLimitTier: String?, organizationType: String?) -> PlanInfo? {
         let tier = (rateLimitTier ?? "").lowercased()
-        switch sub {
-        case "free": return PlanInfo(label: "Free", monthlyUSD: 0)
-        case "pro": return PlanInfo(label: "Pro", monthlyUSD: 20)
-        case "max":
-            if tier.contains("20x") { return PlanInfo(label: "Max 20×", monthlyUSD: 200) }
-            if tier.contains("5x") { return PlanInfo(label: "Max 5×", monthlyUSD: 100) }
-            return PlanInfo(label: "Max", monthlyUSD: 100)
-        case "team": return PlanInfo(label: "Team", monthlyUSD: 30)
-        case "enterprise": return PlanInfo(label: "Enterprise", monthlyUSD: nil)
-        default: return PlanInfo(label: sub.capitalized, monthlyUSD: nil)
+        if tier.contains("20x") { return PlanInfo(label: "Max 20×", monthlyUSD: 200) }
+        if tier.contains("5x") { return PlanInfo(label: "Max 5×", monthlyUSD: 100) }
+        if tier.contains("max") { return PlanInfo(label: "Max", monthlyUSD: 100) }
+
+        switch (organizationType ?? "").lowercased() {
+        case "claude_max": return PlanInfo(label: "Max", monthlyUSD: 100)
+        case "claude_pro": return PlanInfo(label: "Pro", monthlyUSD: 20)
+        case "claude_team": return PlanInfo(label: "Team", monthlyUSD: 30)
+        case "claude_enterprise": return PlanInfo(label: "Enterprise", monthlyUSD: nil)
+        case "claude_free": return PlanInfo(label: "Free", monthlyUSD: 0)
+        default: break
         }
+
+        if tier.contains("free") { return PlanInfo(label: "Free", monthlyUSD: 0) }
+        if tier.contains("pro") || tier == "default_claude_ai" {
+            return PlanInfo(label: "Pro", monthlyUSD: 20)
+        }
+        return nil
     }
 
     /// ChatGPT / Codex plan, from the id_token's `chatgpt_plan_type`.

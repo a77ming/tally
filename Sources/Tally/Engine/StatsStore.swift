@@ -40,9 +40,9 @@ final class StatsStore: ObservableObject {
         isRefreshing = true
         if fetchClaudeQuota {
             Task { [weak self] in
-                let (quota, plan) = await ClaudeQuotaFetcher.fetch()
-                if let quota { self?.claudeQuota = quota }
-                if let plan { self?.claudePlan = plan }
+                if let quota = await ClaudeQuotaFetcher.fetch() {
+                    self?.claudeQuota = quota
+                }
             }
         }
         Task.detached(priority: .utility) { [indexer, pricingLoaded] in
@@ -56,6 +56,7 @@ final class StatsStore: ObservableObject {
             }
             let snap = await indexer.scan()
             let codexPlan = CodexAuthReader.plan()
+            let claudePlan = ClaudeAccountReader.plan()
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.snapshot = snap
@@ -64,6 +65,7 @@ final class StatsStore: ObservableObject {
                     self.rollups = cc.rollups
                 }
                 if let codexPlan { self.codexPlan = codexPlan }
+                if let claudePlan { self.claudePlan = claudePlan }
                 self.pricingLoaded = true
                 self.isRefreshing = false
             }

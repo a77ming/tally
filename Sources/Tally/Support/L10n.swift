@@ -29,6 +29,8 @@ enum L10n {
         // Tabs
         "Apps": ("Apps", "应用"),
         "Free": ("Free", "免费"),
+        "Approve Keychain access to show usage limits":
+            ("Approve Keychain access to show usage limits", "授权钥匙串后显示用量限额"),
         "$%d/mo": ("$%d/mo", "$%d/月"),
         "Rate Limits": ("Rate Limits", "限额"),
         "Models": ("Models", "模型"),

@@ -116,30 +116,28 @@ struct PopoverView: View {
 
     @ViewBuilder
     private var quotaSection: some View {
-        let claude = store.claudeQuota
-        let codex = store.snapshot.codexQuota
-        if claude != nil || codex != nil {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.t("Rate Limits").uppercased())
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-                    .kerning(0.6)
-                HStack(alignment: .top, spacing: 14) {
-                    if let claude {
-                        QuotaColumn(name: "Claude Code", colorHex: "#D97757",
-                                    quota: claude, plan: store.claudePlan)
-                    }
-                    if claude != nil && codex != nil {
-                        Divider().frame(height: 60)
-                    }
-                    if let codex {
-                        QuotaColumn(name: "Codex", colorHex: "#10A37F",
-                                    quota: codex, plan: store.codexPlan)
-                    }
+        // A row shows whenever we know the plan (from local files) OR have
+        // live quota — so the plan badge appears even before Keychain auth.
+        let showClaude = store.claudePlan != nil || store.claudeQuota != nil
+        let showCodex = store.codexPlan != nil || store.snapshot.codexQuota != nil
+        if showClaude || showCodex {
+            VStack(alignment: .leading, spacing: 12) {
+                if showClaude {
+                    QuotaRow(name: "Claude Code", colorHex: "#D97757",
+                             quota: store.claudeQuota, plan: store.claudePlan,
+                             needsAuth: store.claudeQuota == nil)
+                }
+                if showClaude && showCodex {
+                    Divider()
+                }
+                if showCodex {
+                    QuotaRow(name: "Codex", colorHex: "#10A37F",
+                             quota: store.snapshot.codexQuota, plan: store.codexPlan,
+                             needsAuth: false)
                 }
             }
-            .padding(10)
-            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+            .padding(12)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
         }
     }
 
@@ -337,80 +335,133 @@ private struct BreakdownRowView: View {
     }
 }
 
-/// One app's rate limits: name + plan badge header, then big 5h/7d gauges.
-private struct QuotaColumn: View {
+/// One app's rate limits as a full-width row: header (name + ranked plan
+/// badge) over two big gauges.
+private struct QuotaRow: View {
     let name: String
     let colorHex: String
-    let quota: CodexQuota
+    let quota: CodexQuota?
     let plan: PlanInfo?
+    let needsAuth: Bool
 
     var body: some View {
         let tint = Color(hex: colorHex)
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(tint)
-                    .frame(width: 7, height: 7)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Circle().fill(tint).frame(width: 8, height: 8)
                 Text(name)
-                    .font(.caption.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
+                Spacer(minLength: 6)
+                if let plan {
+                    PlanBadge(plan: plan)
+                }
             }
-            if let plan {
-                PlanBadge(plan: plan, tint: tint)
+            if let quota {
+                QuotaGauge(label: "5h", percent: quota.primaryPercent)
+                QuotaGauge(label: "7d", percent: quota.secondaryPercent)
+            } else if needsAuth {
+                Text(L10n.t("Approve Keychain access to show usage limits"))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
-            QuotaGauge(label: "5h", percent: quota.primaryPercent)
-            QuotaGauge(label: "7d", percent: quota.secondaryPercent)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-/// "Pro · $20/mo" pill — the quiet flex.
+/// A ranked subscription badge — bronze→diamond by monthly spend, with a
+/// crown on the top tier. The quiet flex.
 private struct PlanBadge: View {
     let plan: PlanInfo
-    let tint: Color
 
     var body: some View {
+        let rank = PlanRank.of(plan.monthlyUSD)
         HStack(spacing: 4) {
+            if let icon = rank.icon {
+                Image(systemName: icon).font(.system(size: 9, weight: .bold))
+            }
             Text(plan.label)
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: 11, weight: .heavy))
             if let price = Formatters.planPrice(plan) {
                 Text(price)
-                    .font(.system(size: 9, weight: .medium))
-                    .opacity(0.85)
+                    .font(.system(size: 10, weight: .semibold))
+                    .opacity(0.92)
             }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .foregroundStyle(tint)
-        .background(tint.opacity(0.14), in: Capsule())
-        .overlay(Capsule().stroke(tint.opacity(0.28), lineWidth: 0.5))
+        .padding(.horizontal, 9)
+        .padding(.vertical, 3.5)
+        .foregroundStyle(rank.foreground)
+        .background(rank.fill, in: Capsule())
+        .overlay(Capsule().strokeBorder(rank.stroke, lineWidth: 0.75))
+        .shadow(color: rank.glow, radius: rank.glowRadius, y: 0)
     }
 }
 
-/// One rate-limit gauge: "5h ▓▓▓░░░ 37%".
+/// Visual tier for a plan, keyed off monthly price.
+private struct PlanRank {
+    let fill: AnyShapeStyle
+    let foreground: Color
+    let stroke: Color
+    let glow: Color
+    let glowRadius: CGFloat
+    let icon: String?
+
+    static func of(_ usd: Int?) -> PlanRank {
+        // Enterprise / unknown → sleek graphite.
+        guard let usd else {
+            return PlanRank(fill: AnyShapeStyle(Color(hex: "#3A3A3C")),
+                            foreground: .white, stroke: .white.opacity(0.25),
+                            glow: .clear, glowRadius: 0, icon: "building.2.fill")
+        }
+        switch usd {
+        case 0:  // Free → bronze
+            return PlanRank(fill: AnyShapeStyle(Color(hex: "#8D6E63").opacity(0.18)),
+                            foreground: Color(hex: "#8D6E63"), stroke: Color(hex: "#8D6E63").opacity(0.4),
+                            glow: .clear, glowRadius: 0, icon: nil)
+        case 1...20:  // Plus / Pro → silver-blue
+            return PlanRank(fill: AnyShapeStyle(grad("#7FB0E0", "#5C8FD6")),
+                            foreground: .white, stroke: .white.opacity(0.4),
+                            glow: Color(hex: "#5C8FD6").opacity(0.35), glowRadius: 2.5, icon: nil)
+        case 21...100:  // Max 5× / Pro Lite → amethyst
+            return PlanRank(fill: AnyShapeStyle(grad("#A368E0", "#7B3FC4")),
+                            foreground: .white, stroke: .white.opacity(0.5),
+                            glow: Color(hex: "#7B3FC4").opacity(0.45), glowRadius: 4, icon: "sparkles")
+        default:  // $200 → gold/diamond, crowned
+            return PlanRank(fill: AnyShapeStyle(grad("#FFD86B", "#F0A93B")),
+                            foreground: Color(hex: "#5A3A00"), stroke: .white.opacity(0.7),
+                            glow: Color(hex: "#FFC23C").opacity(0.6), glowRadius: 5, icon: "crown.fill")
+        }
+    }
+
+    private static func grad(_ a: String, _ b: String) -> LinearGradient {
+        LinearGradient(colors: [Color(hex: a), Color(hex: b)],
+                       startPoint: .top, endPoint: .bottom)
+    }
+}
+
+/// One rate-limit gauge: "5h ▓▓▓░░░░░ 37%" — full width, prominent percentage.
 private struct QuotaGauge: View {
     let label: String
     let percent: Double
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 8) {
             Text(label)
-                .font(.caption2)
+                .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
-                .frame(width: 14, alignment: .leading)
+                .frame(width: 18, alignment: .leading)
             ZStack(alignment: .leading) {
                 Capsule().fill(.quaternary)
                 GeometryReader { geo in
                     Capsule().fill(color)
-                        .frame(width: max(3, geo.size.width * min(1, percent / 100)))
+                        .frame(width: max(4, geo.size.width * min(1, percent / 100)))
                 }
             }
-            .frame(height: 6)
+            .frame(height: 9)
             Text("\(Int(percent.rounded()))%")
-                .font(.callout.weight(.semibold))
+                .font(.body.weight(.bold))
                 .monospacedDigit()
-                .frame(width: 36, alignment: .trailing)
+                .frame(width: 44, alignment: .trailing)
         }
     }
 
