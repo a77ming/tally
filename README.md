@@ -21,6 +21,8 @@ English · [中文](#简体中文)
 
 Tally is a 100% native SwiftUI menu bar app for macOS (14+, Apple Silicon & Intel) that shows what your Claude Code and Codex CLI sessions are actually costing you — at a glance, without leaving your desk or running a CLI. Local-first: no accounts, no telemetry.
 
+**Works the moment you install it.** Tally reads the local files Claude Code and Codex already write — usage, cost, model, project, and plan all show up with zero setup. The only thing that asks for permission is Claude's *live* rate-limit gauge: macOS shows one Keychain prompt — click **Always Allow** and it never asks again (Codex limits and all plan badges need no prompt at all).
+
 ## Features
 
 - **Menu bar at a glance** — today's spend right in the menu bar. Switch to token count or icon-only if you prefer it quiet.
@@ -113,6 +115,8 @@ ccusage is CLI-only, cc-bar tracks Codex quota, and cc-switch switches providers
 </div>
 
 Tally 是一款 100% 原生 SwiftUI 的 macOS 菜单栏应用（macOS 14+，Apple Silicon 与 Intel 均支持），让你一眼看清 Claude Code 和 Codex CLI 到底花了多少钱——不用开终端、不用跑 CLI。本地优先：无账号、无遥测。
+
+**装上即用，无需配置。** Tally 直接读取 Claude Code 和 Codex 本身写在本地的文件——用量、花费、模型、项目、套餐档位全部零配置显示。唯一需要授权的是 Claude 的*实时*限额进度条：macOS 会弹一次钥匙串授权框，点“始终允许”后永不再问（Codex 限额和所有套餐徽章完全无需授权）。
 
 ## 功能
 
