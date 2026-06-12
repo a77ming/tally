@@ -79,7 +79,7 @@ struct Totals {
     var totalTokens: Int { input + output + cacheRead + cacheWrite }
 }
 
-/// A row in the Models / Projects / Providers breakdown lists.
+/// A row in the Apps / Models / Projects / Providers breakdown lists.
 struct BreakdownRow: Identifiable {
     let id: String
     let name: String

@@ -6,6 +6,7 @@ private let accent = Color(hex: "#D97757")
 
 struct PopoverView: View {
     @ObservedObject var store: StatsStore
+    @AppStorage("appLanguage") private var appLanguage = "system"
 
     private enum Tab: String, CaseIterable, Identifiable {
         case apps = "Apps"
@@ -18,9 +19,11 @@ struct PopoverView: View {
     @State private var tab: Tab = .models
 
     var body: some View {
+        let _ = appLanguage
         VStack(alignment: .leading, spacing: 13) {
             header
             hero
+            quotaSection
             chart
             Divider()
             tabPicker
@@ -43,20 +46,20 @@ struct PopoverView: View {
         HStack(spacing: 8) {
             Picker("", selection: $store.period) {
                 ForEach(Period.allCases) { p in
-                    Text(p.rawValue).tag(p)
+                    Text(L10n.t(p.rawValue)).tag(p)
                 }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
 
             Menu {
-                Button("Refresh") { store.refresh() }
+                Button(L10n.t("Refresh")) { store.refresh() }
                     .keyboardShortcut("r")
                 SettingsLink {
-                    Text("Settings…")
+                    Text(L10n.t("Settings…"))
                 }
                 Divider()
-                Button("Quit Tally") { NSApplication.shared.terminate(nil) }
+                Button(L10n.t("Quit Tally")) { NSApplication.shared.terminate(nil) }
                     .keyboardShortcut("q")
             } label: {
                 Image(systemName: "gearshape")
@@ -76,7 +79,8 @@ struct PopoverView: View {
             Text(Formatters.cost(totals.cost))
                 .font(.system(size: 34, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-            Text("\(Formatters.tokens(totals.totalTokens)) tokens · \(totals.requests) requests · \(totals.sessions) sessions")
+            Text(L10n.f("%@ tokens · %d requests · %d sessions",
+                        Formatters.tokens(totals.totalTokens), totals.requests, totals.sessions))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             // Always exactly one line here — hiding it changes the content
@@ -95,15 +99,45 @@ struct PopoverView: View {
             guard yesterday > 0 else { return ("—", .secondary) }
             let pct = Int((abs(totals.cost - yesterday) / yesterday * 100).rounded())
             return totals.cost >= yesterday
-                ? ("▲ \(pct)% vs yesterday", .red)
-                : ("▼ \(pct)% vs yesterday", .green)
+                ? (L10n.f("▲ %d%% vs yesterday", pct), .red)
+                : (L10n.f("▼ %d%% vs yesterday", pct), .green)
         case .week:
-            return ("\(Formatters.cost(totals.cost / 7))/day average", .secondary)
+            return (L10n.f("%@/day average", Formatters.cost(totals.cost / 7)), .secondary)
         case .month:
-            return ("\(Formatters.cost(totals.cost / 30))/day average", .secondary)
+            return (L10n.f("%@/day average", Formatters.cost(totals.cost / 30)), .secondary)
         case .all:
             let days = max(1, store.activeDayCount())
-            return ("\(Formatters.cost(totals.cost / Double(days)))/day over \(days) active days", .secondary)
+            return (L10n.f("%1$@/day over %2$d active days",
+                           Formatters.cost(totals.cost / Double(days)), days), .secondary)
+        }
+    }
+
+    // MARK: - Rate limits
+
+    @ViewBuilder
+    private var quotaSection: some View {
+        let claude = store.claudeQuota
+        let codex = store.snapshot.codexQuota
+        if claude != nil || codex != nil {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.t("Rate Limits").uppercased())
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .kerning(0.6)
+                HStack(alignment: .top, spacing: 14) {
+                    if let claude {
+                        QuotaColumn(name: "Claude Code", colorHex: "#D97757", quota: claude)
+                    }
+                    if claude != nil && codex != nil {
+                        Divider().frame(height: 52)
+                    }
+                    if let codex {
+                        QuotaColumn(name: "Codex", colorHex: "#10A37F", quota: codex)
+                    }
+                }
+            }
+            .padding(10)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
         }
     }
 
@@ -148,7 +182,7 @@ struct PopoverView: View {
     private var tabPicker: some View {
         Picker("", selection: $tab) {
             ForEach(Tab.allCases) { t in
-                Text(t.rawValue).tag(t)
+                Text(L10n.t(t.rawValue)).tag(t)
             }
         }
         .pickerStyle(.segmented)
@@ -172,17 +206,17 @@ struct PopoverView: View {
         let rows = rows
         if tab == .providers && rows.isEmpty {
             VStack(spacing: 4) {
-                Text("cc-switch not detected")
+                Text(L10n.t("cc-switch not detected"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
-                Text("Install cc-switch to track per-provider usage.")
+                Text(L10n.t("Install cc-switch to track per-provider usage."))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
         } else if rows.isEmpty {
-            Text("No usage in this period")
+            Text(L10n.t("No usage in this period"))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
@@ -196,7 +230,7 @@ struct PopoverView: View {
                                          dimmed: tab == .providers && row.tokens == 0)
                     }
                     if tab == .providers {
-                        Text("usage via cc-switch proxy logs")
+                        Text(L10n.t("usage via cc-switch proxy logs"))
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -234,9 +268,9 @@ struct PopoverView: View {
 
     private var updatedText: String {
         if let date = store.snapshot.lastUpdated {
-            return "Updated " + Formatters.relativeTime(date)
+            return L10n.f("Updated %@", Formatters.relativeTime(date))
         }
-        return "Updating…"
+        return L10n.t("Updating…")
     }
 }
 
@@ -244,8 +278,10 @@ private struct BreakdownRowView: View {
     let row: BreakdownRow
     let maxCost: Double
     let dimmed: Bool
+    @AppStorage("appLanguage") private var appLanguage = "system"
 
     var body: some View {
+        let _ = appLanguage
         VStack(spacing: 4) {
             HStack(spacing: 6) {
                 if let hex = row.colorHex {
@@ -257,7 +293,7 @@ private struct BreakdownRowView: View {
                     .font(.body)
                     .lineLimit(1)
                 if row.isCurrent {
-                    Text("ACTIVE")
+                    Text(L10n.t("ACTIVE"))
                         .font(.system(size: 8, weight: .semibold))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1.5)
@@ -296,5 +332,63 @@ private struct BreakdownRowView: View {
 
     private var share: Double {
         maxCost > 0 ? min(1, row.cost / maxCost) : 0
+    }
+}
+
+/// One app's rate limits: name header + big 5h and 7d gauges, stacked.
+private struct QuotaColumn: View {
+    let name: String
+    let colorHex: String
+    let quota: CodexQuota
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(Color(hex: colorHex))
+                    .frame(width: 7, height: 7)
+                Text(name)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+            }
+            QuotaGauge(label: "5h", percent: quota.primaryPercent)
+            QuotaGauge(label: "7d", percent: quota.secondaryPercent)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// One rate-limit gauge: "5h ▓▓▓░░░ 37%".
+private struct QuotaGauge: View {
+    let label: String
+    let percent: Double
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: 14, alignment: .leading)
+            ZStack(alignment: .leading) {
+                Capsule().fill(.quaternary)
+                GeometryReader { geo in
+                    Capsule().fill(color)
+                        .frame(width: max(3, geo.size.width * min(1, percent / 100)))
+                }
+            }
+            .frame(height: 6)
+            Text("\(Int(percent.rounded()))%")
+                .font(.callout.weight(.semibold))
+                .monospacedDigit()
+                .frame(width: 36, alignment: .trailing)
+        }
+    }
+
+    private var color: Color {
+        switch percent {
+        case ..<50: return .green
+        case ..<80: return .orange
+        default: return .red
+        }
     }
 }

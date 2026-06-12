@@ -8,8 +8,10 @@ final class StatsStore: ObservableObject {
     @Published var rollups: [ProviderRollup] = []
     @Published var period: Period = .today
     @Published var isRefreshing = false
+    @Published var claudeQuota: CodexQuota?
 
     @AppStorage("refreshInterval") var refreshInterval: Int = 60
+    @AppStorage("fetchClaudeQuota") var fetchClaudeQuota: Bool = true
 
     private let indexer = UsageIndexer()
     private var timerTask: Task<Void, Never>?
@@ -34,6 +36,13 @@ final class StatsStore: ObservableObject {
     func refresh() {
         guard !isRefreshing else { return }
         isRefreshing = true
+        if fetchClaudeQuota {
+            Task { [weak self] in
+                if let quota = await ClaudeQuotaFetcher.fetch() {
+                    self?.claudeQuota = quota
+                }
+            }
+        }
         Task.detached(priority: .utility) { [indexer, pricingLoaded] in
             let ccswitch = CCSwitchStore.load()
             if !pricingLoaded {
@@ -118,11 +127,8 @@ final class StatsStore: ObservableObject {
                                      cost: claude.cost, tokens: claude.tokens))
         }
         if let codex = agg["codex"] {
-            var detail: String?
-            if let q = snapshot.codexQuota {
-                detail = "5h \(Int(q.primaryPercent))% · 7d \(Int(q.secondaryPercent))%"
-            }
-            rows.append(BreakdownRow(id: "codex", name: "Codex", detail: detail,
+            rows.append(BreakdownRow(id: "codex", name: "Codex",
+                                     detail: snapshot.codexQuota?.planType,
                                      colorHex: "#10A37F", cost: codex.cost, tokens: codex.tokens))
         }
         return rows.sorted { $0.cost > $1.cost }

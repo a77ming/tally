@@ -56,13 +56,13 @@ enum Formatters {
         }
     }
 
-    /// "just now", "2m ago", "3h ago", "5d ago"
+    /// "just now", "2m ago", "3h ago", "5d ago" (localized)
     static func relativeTime(_ date: Date) -> String {
         let seconds = Int(Date().timeIntervalSince(date))
-        if seconds < 60 { return "just now" }
-        if seconds < 3600 { return "\(seconds / 60)m ago" }
-        if seconds < 86400 { return "\(seconds / 3600)h ago" }
-        return "\(seconds / 86400)d ago"
+        if seconds < 60 { return L10n.t("just now") }
+        if seconds < 3600 { return L10n.f("%dm ago", seconds / 60) }
+        if seconds < 86400 { return L10n.f("%dh ago", seconds / 3600) }
+        return L10n.f("%dd ago", seconds / 86400)
     }
 }
 
