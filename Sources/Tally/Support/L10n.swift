@@ -28,6 +28,8 @@ enum L10n {
         "All": ("All", "全部"),
         // Tabs
         "Apps": ("Apps", "应用"),
+        "Free": ("Free", "免费"),
+        "$%d/mo": ("$%d/mo", "$%d/月"),
         "Rate Limits": ("Rate Limits", "限额"),
         "Models": ("Models", "模型"),
         "Projects": ("Projects", "项目"),

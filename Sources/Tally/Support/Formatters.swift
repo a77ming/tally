@@ -44,6 +44,13 @@ enum Formatters {
         return version.isEmpty ? display : display + " " + version
     }
 
+    /// Localized monthly price: "$20/mo" / "$20/月", or "Free" / "免费".
+    /// nil when the plan price is unknown (Enterprise/custom).
+    static func planPrice(_ plan: PlanInfo) -> String? {
+        guard let m = plan.monthlyUSD else { return nil }
+        return m == 0 ? L10n.t("Free") : L10n.f("$%d/mo", m)
+    }
+
     static func categoryLabel(_ s: String?) -> String? {
         guard let s, !s.isEmpty else { return nil }
         switch s {

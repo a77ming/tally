@@ -28,6 +28,7 @@ Tally is a 100% native SwiftUI menu bar app for macOS (14+, Apple Silicon & Inte
 - **14-day cost chart** — stacked by model, drawn with Swift Charts.
 - **Codex CLI too** — Tally also reads Codex's session rollouts: GPT model usage and estimated cost.
 - **Subscription quota at a glance** — live 5-hour and weekly rate-limit gauges for both Claude (official subscription) and Codex, right in the Apps tab. Claude quota is fetched from Anthropic's usage endpoint with the credentials Claude Code already stores — Tally's only network call, one toggle to turn off. Codex quota comes from local logs.
+- **Plan badge** — your subscription tier and its price sit next to each app: Claude (Free / Pro $20 / Max 5× $100 / Max 20× $200) and Codex/ChatGPT (Free / Go $8 / Plus $20 / Pro Lite $100 / Pro $200). A quiet flex when you share a screenshot — Codex tier reads from local `~/.codex/auth.json`, no prompt.
 - **Bilingual UI** — English / 简体中文 / follow system, switchable in Settings.
 - **Four breakdowns**:
   - **Apps** — Claude Code vs Codex side by side, each with live 5h/7d quota gauges.
@@ -120,6 +121,7 @@ Tally 是一款 100% 原生 SwiftUI 的 macOS 菜单栏应用（macOS 14+，Appl
 - **14 天费用图表** — 按模型堆叠，由 Swift Charts 绘制。
 - **Codex CLI 同样支持** — Tally 也会读取 Codex 的会话日志：GPT 系列模型用量与估算费用。
 - **订阅限额一目了然** — Claude（官方订阅）与 Codex 的 5 小时 / 每周限额进度条，直接显示在"应用"标签页。Claude 限额使用 Claude Code 已保存的凭证查询 Anthropic 官方用量接口——这是 Tally 唯一的网络请求，一个开关即可关闭；Codex 限额来自本地日志。
+- **套餐徽章** — 每个 App 旁边显示你的订阅档位与价格：Claude（免费 / Pro $20 / Max 5× $100 / Max 20× $200）和 Codex/ChatGPT（免费 / Go $8 / Plus $20 / Pro Lite $100 / Pro $200）。分享截图时无形展示——Codex 档位读取本地 `~/.codex/auth.json`，无需授权。
 - **双语界面** — English / 简体中文 / 跟随系统，设置中随时切换。
 - **四种维度拆分**：
   - **应用** — Claude Code 与 Codex 并列对比，各自带实时 5h/7d 限额进度条。

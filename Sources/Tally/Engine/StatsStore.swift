@@ -9,6 +9,8 @@ final class StatsStore: ObservableObject {
     @Published var period: Period = .today
     @Published var isRefreshing = false
     @Published var claudeQuota: CodexQuota?
+    @Published var claudePlan: PlanInfo?
+    @Published var codexPlan: PlanInfo?
 
     @AppStorage("refreshInterval") var refreshInterval: Int = 60
     @AppStorage("fetchClaudeQuota") var fetchClaudeQuota: Bool = true
@@ -38,9 +40,9 @@ final class StatsStore: ObservableObject {
         isRefreshing = true
         if fetchClaudeQuota {
             Task { [weak self] in
-                if let quota = await ClaudeQuotaFetcher.fetch() {
-                    self?.claudeQuota = quota
-                }
+                let (quota, plan) = await ClaudeQuotaFetcher.fetch()
+                if let quota { self?.claudeQuota = quota }
+                if let plan { self?.claudePlan = plan }
             }
         }
         Task.detached(priority: .utility) { [indexer, pricingLoaded] in
@@ -53,6 +55,7 @@ final class StatsStore: ObservableObject {
                 await indexer.updatePricing(pricing)
             }
             let snap = await indexer.scan()
+            let codexPlan = CodexAuthReader.plan()
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.snapshot = snap
@@ -60,6 +63,7 @@ final class StatsStore: ObservableObject {
                     self.providers = cc.providers
                     self.rollups = cc.rollups
                 }
+                if let codexPlan { self.codexPlan = codexPlan }
                 self.pricingLoaded = true
                 self.isRefreshing = false
             }
@@ -123,15 +127,23 @@ final class StatsStore: ObservableObject {
         }
         var rows: [BreakdownRow] = []
         if let claude = agg["claude"] {
-            rows.append(BreakdownRow(id: "claude", name: "Claude Code", colorHex: "#D97757",
+            rows.append(BreakdownRow(id: "claude", name: "Claude Code",
+                                     detail: planDisplay(claudePlan), colorHex: "#D97757",
                                      cost: claude.cost, tokens: claude.tokens))
         }
         if let codex = agg["codex"] {
             rows.append(BreakdownRow(id: "codex", name: "Codex",
-                                     detail: snapshot.codexQuota?.planType,
-                                     colorHex: "#10A37F", cost: codex.cost, tokens: codex.tokens))
+                                     detail: planDisplay(codexPlan), colorHex: "#10A37F",
+                                     cost: codex.cost, tokens: codex.tokens))
         }
         return rows.sorted { $0.cost > $1.cost }
+    }
+
+    /// "Pro · $20/mo" — localized, for the Apps breakdown subtitle.
+    private func planDisplay(_ plan: PlanInfo?) -> String? {
+        guard let plan else { return nil }
+        guard let price = Formatters.planPrice(plan) else { return plan.label }
+        return "\(plan.label) · \(price)"
     }
 
     func modelRows() -> [BreakdownRow] {

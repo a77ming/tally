@@ -126,13 +126,15 @@ struct PopoverView: View {
                     .kerning(0.6)
                 HStack(alignment: .top, spacing: 14) {
                     if let claude {
-                        QuotaColumn(name: "Claude Code", colorHex: "#D97757", quota: claude)
+                        QuotaColumn(name: "Claude Code", colorHex: "#D97757",
+                                    quota: claude, plan: store.claudePlan)
                     }
                     if claude != nil && codex != nil {
-                        Divider().frame(height: 52)
+                        Divider().frame(height: 60)
                     }
                     if let codex {
-                        QuotaColumn(name: "Codex", colorHex: "#10A37F", quota: codex)
+                        QuotaColumn(name: "Codex", colorHex: "#10A37F",
+                                    quota: codex, plan: store.codexPlan)
                     }
                 }
             }
@@ -335,26 +337,54 @@ private struct BreakdownRowView: View {
     }
 }
 
-/// One app's rate limits: name header + big 5h and 7d gauges, stacked.
+/// One app's rate limits: name + plan badge header, then big 5h/7d gauges.
 private struct QuotaColumn: View {
     let name: String
     let colorHex: String
     let quota: CodexQuota
+    let plan: PlanInfo?
 
     var body: some View {
+        let tint = Color(hex: colorHex)
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 5) {
                 Circle()
-                    .fill(Color(hex: colorHex))
+                    .fill(tint)
                     .frame(width: 7, height: 7)
                 Text(name)
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
             }
+            if let plan {
+                PlanBadge(plan: plan, tint: tint)
+            }
             QuotaGauge(label: "5h", percent: quota.primaryPercent)
             QuotaGauge(label: "7d", percent: quota.secondaryPercent)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// "Pro · $20/mo" pill — the quiet flex.
+private struct PlanBadge: View {
+    let plan: PlanInfo
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(plan.label)
+                .font(.system(size: 9, weight: .bold))
+            if let price = Formatters.planPrice(plan) {
+                Text(price)
+                    .font(.system(size: 9, weight: .medium))
+                    .opacity(0.85)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .foregroundStyle(tint)
+        .background(tint.opacity(0.14), in: Capsule())
+        .overlay(Capsule().stroke(tint.opacity(0.28), lineWidth: 0.5))
     }
 }
 
