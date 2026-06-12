@@ -3,15 +3,21 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# Try a universal (arm64 + x86_64) release build; fall back to native-only
-# if the x86_64 stdlib/SDK isn't available with Command Line Tools.
-BINARY=""
-if swift build -c release --arch arm64 --arch x86_64; then
-    BINARY=".build/apple/Products/Release/Tally"
+# Build each arch in its own pass and merge with lipo. SwiftPM's single-pass
+# `--arch arm64 --arch x86_64` hits a caching race ("auxiliary file not
+# registered"), so we build them separately — this reliably yields a
+# universal binary that runs on both Apple Silicon and Intel.
+BINARY=".build/Tally-universal"
+ARM=".build/arm64-apple-macosx/release/Tally"
+X86=".build/x86_64-apple-macosx/release/Tally"
+
+swift build -c release --arch arm64
+if swift build -c release --arch x86_64 && [[ -f "$X86" ]]; then
+    lipo -create "$ARM" "$X86" -output "$BINARY"
+    echo "✓ universal binary (arm64 + x86_64)"
 else
-    echo "⚠ universal build failed — falling back to native-only release build"
-    swift build -c release
-    BINARY=".build/release/Tally"
+    echo "⚠ x86_64 build unavailable — shipping Apple Silicon only"
+    cp "$ARM" "$BINARY"
 fi
 
 if [[ ! -f "$BINARY" ]]; then
