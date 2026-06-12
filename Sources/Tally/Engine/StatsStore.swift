@@ -105,6 +105,29 @@ final class StatsStore: ObservableObject {
             .reduce(0) { $0 + $1.value.cost }
     }
 
+    func appRows() -> [BreakdownRow] {
+        let range = dayRange(for: period)
+        var agg: [String: (cost: Double, tokens: Int)] = [:]
+        for (key, b) in snapshot.buckets where contains(key.day, range) {
+            agg[key.source, default: (0, 0)].cost += b.cost
+            agg[key.source, default: (0, 0)].tokens += b.totalTokens
+        }
+        var rows: [BreakdownRow] = []
+        if let claude = agg["claude"] {
+            rows.append(BreakdownRow(id: "claude", name: "Claude Code", colorHex: "#D97757",
+                                     cost: claude.cost, tokens: claude.tokens))
+        }
+        if let codex = agg["codex"] {
+            var detail: String?
+            if let q = snapshot.codexQuota {
+                detail = "5h \(Int(q.primaryPercent))% · 7d \(Int(q.secondaryPercent))%"
+            }
+            rows.append(BreakdownRow(id: "codex", name: "Codex", detail: detail,
+                                     colorHex: "#10A37F", cost: codex.cost, tokens: codex.tokens))
+        }
+        return rows.sorted { $0.cost > $1.cost }
+    }
+
     func modelRows() -> [BreakdownRow] {
         let range = dayRange(for: period)
         var agg: [String: (cost: Double, tokens: Int)] = [:]

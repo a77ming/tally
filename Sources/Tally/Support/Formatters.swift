@@ -31,6 +31,9 @@ enum Formatters {
         if let range = name.range(of: #"-\d{8}$"#, options: .regularExpression) {
             name.removeSubrange(range)
         }
+        if name.lowercased().hasPrefix("gpt-") {
+            return "GPT" + name.dropFirst("gpt".count)
+        }
         guard name.lowercased().hasPrefix("claude-") else { return name }
         let parts = name.dropFirst("claude-".count).split(separator: "-").map(String.init)
         let words = parts.filter { Int($0) == nil }

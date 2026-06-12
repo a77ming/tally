@@ -62,7 +62,7 @@ struct SettingsView: View {
                               path: ccSwitchPath)
             }
 
-            Text("Tally v1.0.0 — local-only, no network access")
+            Text("Tally v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev") — local-only, no network access")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

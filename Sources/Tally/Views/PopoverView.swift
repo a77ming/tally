@@ -8,6 +8,7 @@ struct PopoverView: View {
     @ObservedObject var store: StatsStore
 
     private enum Tab: String, CaseIterable, Identifiable {
+        case apps = "Apps"
         case models = "Models"
         case projects = "Projects"
         case providers = "Providers"
@@ -159,6 +160,7 @@ struct PopoverView: View {
 
     private var rows: [BreakdownRow] {
         switch tab {
+        case .apps: return store.appRows()
         case .models: return store.modelRows()
         case .projects: return store.projectRows()
         case .providers: return store.providerRows()
@@ -261,6 +263,12 @@ private struct BreakdownRowView: View {
                         .padding(.vertical, 1.5)
                         .background(accent.opacity(0.15), in: Capsule())
                         .foregroundStyle(accent)
+                }
+                if let detail = row.detail {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 0) {

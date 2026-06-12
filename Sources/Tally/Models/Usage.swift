@@ -1,7 +1,8 @@
 import Foundation
 
-/// Aggregation key: one bucket per (local day, model, project).
+/// Aggregation key: one bucket per (source app, local day, model, project).
 struct BucketKey: Hashable {
+    let source: String   // "claude" | "codex"
     let day: String      // "2026-06-12", local time zone
     let model: String
     let project: String
@@ -27,9 +28,18 @@ struct UsageBucket {
     var totalTokens: Int { input + output + cacheRead + cacheWrite }
 }
 
+/// Codex CLI rate-limit state, from the newest token_count event.
+struct CodexQuota: Sendable {
+    var primaryPercent: Double      // 5h window
+    var secondaryPercent: Double    // weekly window
+    var planType: String?
+    var asOf: Date
+}
+
 struct UsageSnapshot: Sendable {
     var buckets: [BucketKey: UsageBucket] = [:]
     var sessionsByDay: [String: Set<String>] = [:]
+    var codexQuota: CodexQuota? = nil
     var lastUpdated: Date? = nil
 
     static let empty = UsageSnapshot()
